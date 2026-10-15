@@ -5,7 +5,7 @@
 
 ## 🌟 Overview
 
-**Quran Companion** is designed for everyday family use (Me, Father, and Mother). When reading from a physical Mushaf, readers can photograph or upload a page to identify the passage using Gemini Vision AI, or select any of the 114 Surahs and verse ranges manually.
+**Quran Companion** is designed for everyday family use. When reading from a physical Mushaf, readers can photograph or upload a page to identify the passage using Gemini Vision AI, or select any of the 114 Surahs and verse ranges manually.
 
 The app generates a structured, multi-dimensional study guide distinguishing:
 1. **Direct Quranic Verses**: Rendered in clear Arabic script (Amiri font, RTL direction).
