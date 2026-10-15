@@ -1,0 +1,396 @@
+import 'dart:convert';
+
+class HistoricalContext {
+  final String content;
+  final String classification; // 'Makki', 'Madani', 'Mixed'
+  final String occasionsOfRevelation;
+  final String certainty; // 'established', 'disputed', 'uncertain', 'none_known'
+
+  const HistoricalContext({
+    required this.content,
+    this.classification = '',
+    this.occasionsOfRevelation = '',
+    this.certainty = 'uncertain',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'content': content,
+    'classification': classification,
+    'occasions_of_revelation': occasionsOfRevelation,
+    'certainty': certainty,
+  };
+
+  factory HistoricalContext.fromJson(Map<String, dynamic> json) {
+    return HistoricalContext(
+      content: json['content']?.toString() ?? '',
+      classification: json['classification']?.toString() ?? '',
+      occasionsOfRevelation: json['occasions_of_revelation']?.toString() ?? '',
+      certainty: json['certainty']?.toString() ?? 'uncertain',
+    );
+  }
+}
+
+class StoryItem {
+  final String title;
+  final String narrative;
+  final String storyType; // 'Quranic Narrative', 'Historical Report', 'Illustrative Reflection'
+
+  const StoryItem({
+    required this.title,
+    required this.narrative,
+    this.storyType = 'Quranic Narrative',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'narrative': narrative,
+    'story_type': storyType,
+  };
+
+  factory StoryItem.fromJson(Map<String, dynamic> json) {
+    return StoryItem(
+      title: json['title']?.toString() ?? 'Related Narrative',
+      narrative: json['narrative']?.toString() ?? '',
+      storyType: json['story_type']?.toString() ?? 'Quranic Narrative',
+    );
+  }
+}
+
+class ScholarlyView {
+  final String scholarOrWork; // e.g., 'Tafsir Ibn Kathir', 'Tafsir al-Tabari', 'Al-Qurtubi'
+  final String perspective;
+  final String notes;
+  final bool isVerified;
+
+  const ScholarlyView({
+    required this.scholarOrWork,
+    required this.perspective,
+    this.notes = '',
+    this.isVerified = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'scholar_or_work': scholarOrWork,
+    'perspective': perspective,
+    'notes': notes,
+    'is_verified': isVerified,
+  };
+
+  factory ScholarlyView.fromJson(Map<String, dynamic> json) {
+    return ScholarlyView(
+      scholarOrWork: json['scholar_or_work']?.toString() ?? 'Classical Tafsir Perspective',
+      perspective: json['perspective']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      isVerified: json['is_verified'] == true,
+    );
+  }
+}
+
+class SpiritualReflection {
+  final String attributedTo; // e.g. 'Hasan al-Basri', 'Imam al-Ghazali', 'General Spiritual Reflection'
+  final String reflection;
+  final String kind; // 'Historical Saying / Quotation', 'Spiritual Contemplation'
+  final String certainty; // 'Attributed / Verified', 'Traditional Saying', 'General Spiritual Contemplation'
+
+  const SpiritualReflection({
+    required this.attributedTo,
+    required this.reflection,
+    this.kind = 'Spiritual Contemplation',
+    this.certainty = 'Traditional Saying',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'attributed_to': attributedTo,
+    'reflection': reflection,
+    'kind': kind,
+    'certainty': certainty,
+  };
+
+  factory SpiritualReflection.fromJson(Map<String, dynamic> json) {
+    return SpiritualReflection(
+      attributedTo: json['attributed_to']?.toString() ?? 'Islamic Contemplative Tradition',
+      reflection: json['reflection']?.toString() ?? '',
+      kind: json['kind']?.toString() ?? 'Spiritual Contemplation',
+      certainty: json['certainty']?.toString() ?? 'General Spiritual Contemplation',
+    );
+  }
+}
+
+class QuranExplanation {
+  final String surahName;
+  final int surahNumber;
+  final int startVerse;
+  final int endVerse;
+  final String arabicText;
+  final String translation;
+  final String translationUrdu;
+  final String translationSource; // e.g. 'Sahih International / Clear Quran Paraphrase'
+  final String simpleExplanation;
+  final String simpleExplanationUrdu;
+  final HistoricalContext historicalContext;
+  final List<StoryItem> relatedStories;
+  final List<String> lessons;
+  final List<ScholarlyView> scholarlyInterpretations;
+  final List<SpiritualReflection> spiritualReflections;
+  final List<String> limitations;
+  final String cautionDisclaimer;
+
+  const QuranExplanation({
+    required this.surahName,
+    required this.surahNumber,
+    required this.startVerse,
+    required this.endVerse,
+    this.arabicText = '',
+    this.translation = '',
+    this.translationUrdu = '',
+    this.translationSource = 'English Meaning (Study Translation)',
+    required this.simpleExplanation,
+    this.simpleExplanationUrdu = '',
+    required this.historicalContext,
+    this.relatedStories = const [],
+    this.lessons = const [],
+    this.scholarlyInterpretations = const [],
+    this.spiritualReflections = const [],
+    this.limitations = const [],
+    this.cautionDisclaimer =
+        'This explanation is generated by AI as a study aid. It does not replace classical Islamic scholarship or represent authoritative religious rulings (fatwas).',
+  });
+
+  String get passageReference => '$surahName ($surahNumber:$startVerse${endVerse > startVerse ? '-$endVerse' : ''})';
+
+  QuranExplanation copyWith({
+    String? surahName,
+    int? surahNumber,
+    int? startVerse,
+    int? endVerse,
+    String? arabicText,
+    String? translation,
+    String? translationUrdu,
+    String? translationSource,
+    String? simpleExplanation,
+    String? simpleExplanationUrdu,
+    HistoricalContext? historicalContext,
+    List<StoryItem>? relatedStories,
+    List<String>? lessons,
+    List<ScholarlyView>? scholarlyInterpretations,
+    List<SpiritualReflection>? spiritualReflections,
+    List<String>? limitations,
+    String? cautionDisclaimer,
+  }) {
+    return QuranExplanation(
+      surahName: surahName ?? this.surahName,
+      surahNumber: surahNumber ?? this.surahNumber,
+      startVerse: startVerse ?? this.startVerse,
+      endVerse: endVerse ?? this.endVerse,
+      arabicText: arabicText ?? this.arabicText,
+      translation: translation ?? this.translation,
+      translationUrdu: translationUrdu ?? this.translationUrdu,
+      translationSource: translationSource ?? this.translationSource,
+      simpleExplanation: simpleExplanation ?? this.simpleExplanation,
+      simpleExplanationUrdu: simpleExplanationUrdu ?? this.simpleExplanationUrdu,
+      historicalContext: historicalContext ?? this.historicalContext,
+      relatedStories: relatedStories ?? this.relatedStories,
+      lessons: lessons ?? this.lessons,
+      scholarlyInterpretations: scholarlyInterpretations ?? this.scholarlyInterpretations,
+      spiritualReflections: spiritualReflections ?? this.spiritualReflections,
+      limitations: limitations ?? this.limitations,
+      cautionDisclaimer: cautionDisclaimer ?? this.cautionDisclaimer,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'passage': {
+        'surah_name': surahName,
+        'surah_number': surahNumber,
+        'start_verse': startVerse,
+        'end_verse': endVerse,
+      },
+      'arabic_text': arabicText,
+      'translation': translation,
+      'translation_urdu': translationUrdu,
+      'translation_source': translationSource,
+      'simple_explanation': simpleExplanation,
+      'simple_explanation_urdu': simpleExplanationUrdu,
+      'historical_context': historicalContext.toJson(),
+      'related_stories': relatedStories.map((e) => e.toJson()).toList(),
+      'lessons': lessons,
+      'scholarly_interpretations': scholarlyInterpretations.map((e) => e.toJson()).toList(),
+      'spiritual_reflections': spiritualReflections.map((e) => e.toJson()).toList(),
+      'limitations': limitations,
+      'caution_disclaimer': cautionDisclaimer,
+    };
+  }
+
+  factory QuranExplanation.fromJson(Map<String, dynamic> json) {
+    final passageMap = json['passage'] is Map<String, dynamic> ? json['passage'] as Map<String, dynamic> : json;
+
+    final sName = passageMap['surah_name']?.toString() ?? json['surah_name']?.toString() ?? 'Surah';
+    final sNum = passageMap['surah_number'] is int
+        ? passageMap['surah_number'] as int
+        : int.tryParse(passageMap['surah_number']?.toString() ?? '0') ?? 0;
+    final startV = passageMap['start_verse'] is int
+        ? passageMap['start_verse'] as int
+        : int.tryParse(passageMap['start_verse']?.toString() ?? '1') ?? 1;
+    final endV = passageMap['end_verse'] is int
+        ? passageMap['end_verse'] as int
+        : int.tryParse(passageMap['end_verse']?.toString() ?? '$startV') ?? startV;
+
+    HistoricalContext histContext = const HistoricalContext(content: 'Historical context is general to the revelation period.');
+    if (json['historical_context'] is Map<String, dynamic>) {
+      histContext = HistoricalContext.fromJson(json['historical_context'] as Map<String, dynamic>);
+    } else if (json['historical_context'] is String) {
+      histContext = HistoricalContext(content: json['historical_context'] as String);
+    }
+
+    List<StoryItem> stories = [];
+    if (json['related_stories'] is List) {
+      for (final item in json['related_stories'] as List) {
+        if (item is Map<String, dynamic>) {
+          stories.add(StoryItem.fromJson(item));
+        } else if (item is String && item.trim().isNotEmpty) {
+          stories.add(StoryItem(title: 'Narrative Insight', narrative: item));
+        }
+      }
+    }
+
+    List<String> parsedLessons = [];
+    if (json['lessons'] is List) {
+      parsedLessons = (json['lessons'] as List)
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+    }
+
+    List<ScholarlyView> scholarly = [];
+    if (json['scholarly_interpretations'] is List) {
+      for (final item in json['scholarly_interpretations'] as List) {
+        if (item is Map<String, dynamic>) {
+          scholarly.add(ScholarlyView.fromJson(item));
+        } else if (item is String && item.trim().isNotEmpty) {
+          scholarly.add(ScholarlyView(scholarOrWork: 'Scholarly Insight', perspective: item));
+        }
+      }
+    }
+
+    List<SpiritualReflection> spiritual = [];
+    if (json['spiritual_reflections'] is List) {
+      for (final item in json['spiritual_reflections'] as List) {
+        if (item is Map<String, dynamic>) {
+          spiritual.add(SpiritualReflection.fromJson(item));
+        } else if (item is String && item.trim().isNotEmpty) {
+          spiritual.add(SpiritualReflection(
+            attributedTo: 'Spiritual Contemplation',
+            reflection: item,
+          ));
+        }
+      }
+    }
+
+    List<String> limits = [];
+    if (json['limitations'] is List) {
+      limits = (json['limitations'] as List).map((e) => e.toString()).toList();
+    }
+
+    String parsedSimpleExplanation = '';
+    for (final key in ['simple_explanation', 'explanation', 'tafsir', 'summary', 'overview', 'commentary', 'meaning', 'content']) {
+      final val = json[key]?.toString();
+      if (val != null && val.trim().isNotEmpty) {
+        parsedSimpleExplanation = val.trim();
+        break;
+      }
+    }
+    if (parsedSimpleExplanation.isEmpty) {
+      parsedSimpleExplanation =
+          'This passage forms part of the divine revelation of Surah $sName, offering foundational guidance, spiritual clarity, and moral encouragement for personal reflection and worship.';
+    }
+
+    String parsedUrduExplanation = '';
+    for (final key in ['simple_explanation_urdu', 'urdu_explanation', 'explanation_urdu', 'urdu_tafsir']) {
+      final val = json[key]?.toString();
+      if (val != null && val.trim().isNotEmpty) {
+        parsedUrduExplanation = val.trim();
+        break;
+      }
+    }
+
+    String parsedUrduTranslation = '';
+    for (final key in ['translation_urdu', 'urdu_translation', 'tarjuma_urdu', 'urdu_meaning']) {
+      final val = json[key]?.toString();
+      if (val != null && val.trim().isNotEmpty) {
+        parsedUrduTranslation = val.trim();
+        break;
+      }
+    }
+
+    if (histContext.content.trim().isEmpty) {
+      histContext = HistoricalContext(
+        content: 'Revealed as part of the noble Surah $sName, contextualizing the community and conveying enduring guidance for personal faith and practice.',
+        classification: histContext.classification,
+        occasionsOfRevelation: histContext.occasionsOfRevelation,
+        certainty: histContext.certainty,
+      );
+    }
+
+    return QuranExplanation(
+      surahName: sName,
+      surahNumber: sNum,
+      startVerse: startV,
+      endVerse: endV,
+      arabicText: json['arabic_text']?.toString() ?? '',
+      translation: json['translation']?.toString() ?? '',
+      translationUrdu: parsedUrduTranslation,
+      translationSource: json['translation_source']?.toString() ?? 'English Meaning (Study Translation)',
+      simpleExplanation: parsedSimpleExplanation,
+      simpleExplanationUrdu: parsedUrduExplanation,
+      historicalContext: histContext,
+      relatedStories: stories,
+      lessons: parsedLessons,
+      scholarlyInterpretations: scholarly,
+      spiritualReflections: spiritual,
+      limitations: limits,
+      cautionDisclaimer: json['caution_disclaimer']?.toString() ??
+          'This explanation is generated by AI as a study aid. It does not replace classical Islamic scholarship or represent authoritative religious rulings (fatwas).',
+    );
+  }
+
+  factory QuranExplanation.fromRawString(String raw) {
+    try {
+      String clean = raw.trim();
+      if (clean.startsWith('```json')) {
+        clean = clean.substring(7);
+      } else if (clean.startsWith('```')) {
+        clean = clean.substring(3);
+      }
+      if (clean.endsWith('```')) {
+        clean = clean.substring(0, clean.length - 3);
+      }
+      clean = clean.trim();
+
+      final startIdx = clean.indexOf('{');
+      final endIdx = clean.lastIndexOf('}');
+      if (startIdx != -1 && endIdx != -1 && endIdx > startIdx) {
+        clean = clean.substring(startIdx, endIdx + 1);
+      }
+
+      final dynamic decoded = jsonDecode(clean);
+      if (decoded is Map<String, dynamic>) {
+        return QuranExplanation.fromJson(decoded);
+      }
+      throw FormatException('Response was not a valid JSON map');
+    } catch (e) {
+      // Return a structured fallback
+      return QuranExplanation(
+        surahName: 'Quran Passage',
+        surahNumber: 0,
+        startVerse: 1,
+        endVerse: 1,
+        simpleExplanation: raw.isNotEmpty ? raw : 'Unable to parse AI explanation.',
+        historicalContext: const HistoricalContext(
+          content: 'Historical details could not be parsed.',
+          certainty: 'uncertain',
+        ),
+      );
+    }
+  }
+}
