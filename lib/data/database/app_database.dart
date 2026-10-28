@@ -118,6 +118,19 @@ class AppDatabase {
     await batch.commit(noResult: true);
   }
 
+  /// Wipes user-specific data on logout or account switch, preserving database structure.
+  Future<void> clearUserData() async {
+    final db = await database;
+    await db.delete('reading_sessions');
+    await db.delete('bookmarks');
+    await db.delete('profiles');
+    final batch = db.batch();
+    for (final profile in Profile.defaultProfiles) {
+      batch.insert('profiles', profile.toMap());
+    }
+    await batch.commit(noResult: true);
+  }
+
   // Method for tests to inject in-memory database
   @visibleForTesting
   void setDatabaseForTesting(Database db) {

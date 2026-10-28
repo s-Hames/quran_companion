@@ -266,11 +266,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final readingRepo = ref.read(readingRepositoryProvider);
     final profileRepo = ref.read(profileRepositoryProvider);
     final bookmarkRepo = ref.read(bookmarkRepositoryProvider);
+    final settingsService = ref.read(settingsServiceProvider);
 
     await appwrite.performFullSync(
       readingRepo: readingRepo,
       profileRepo: profileRepo,
       bookmarkRepo: bookmarkRepo,
+      settingsService: settingsService,
     );
 
     ref.read(sessionRefreshProvider.notifier).trigger();
@@ -674,7 +676,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       foregroundColor: AppColors.error,
                                     ),
                                     onPressed: () async {
-                                      await appwriteService.signOut();
+                                      final settingsService = ref.read(settingsServiceProvider);
+                                      await appwriteService.signOut(settingsService: settingsService);
+                                      ref.read(sessionRefreshProvider.notifier).trigger();
+                                      ref.read(profilesListProvider.notifier).loadProfiles();
                                     },
                                   ),
                                 ),

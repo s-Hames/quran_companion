@@ -8,6 +8,7 @@ class SettingsService {
   static const String _keyTextScaleFactor = 'explanation_text_scale';
   static const String _keyCustomApiKey = 'custom_gemini_api_key';
   static const String _keyRetainImages = 'retain_reading_images';
+  static const String _keyLastUserId = 'last_synced_user_id';
 
   final SharedPreferences _prefs;
 
@@ -16,6 +17,19 @@ class SettingsService {
   static Future<SettingsService> init() async {
     final prefs = await SharedPreferences.getInstance();
     return SettingsService(prefs);
+  }
+
+  // Last Synced User ID for multi-account safety
+  String? getLastSyncedUserId() {
+    return _prefs.getString(_keyLastUserId);
+  }
+
+  Future<void> setLastSyncedUserId(String? userId) async {
+    if (userId == null) {
+      await _prefs.remove(_keyLastUserId);
+    } else {
+      await _prefs.setString(_keyLastUserId, userId);
+    }
   }
 
   // Active Profile

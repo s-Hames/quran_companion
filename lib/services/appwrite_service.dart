@@ -3,12 +3,14 @@ import 'package:appwrite/enums.dart';
 import 'package:appwrite/models.dart' as models;
 import 'package:flutter/foundation.dart';
 import '../core/constants/appwrite_constants.dart';
+import '../data/database/app_database.dart';
 import '../data/models/bookmark.dart';
 import '../data/models/profile.dart';
 import '../data/models/reading_session.dart';
 import '../data/repositories/bookmark_repository.dart';
 import '../data/repositories/profile_repository.dart';
 import '../data/repositories/reading_repository.dart';
+import 'settings_service.dart';
 
 enum SyncState { idle, syncing, success, error }
 
@@ -66,13 +68,16 @@ class AppwriteService {
   }
 
   /// Sign out
-  Future<void> signOut() async {
+  Future<void> signOut({SettingsService? settingsService}) async {
     try {
       await account.deleteSession(sessionId: 'current');
       _currentUser = null;
       userNotifier.value = null;
       syncStateNotifier.value = SyncState.idle;
       syncMessageNotifier.value = 'Signed out';
+      if (settingsService != null) {
+        await settingsService.setLastSyncedUserId(null);
+      }
     } catch (e) {
       debugPrint('Appwrite Sign-Out Error: $e');
     }
@@ -84,10 +89,21 @@ class AppwriteService {
     required String tableId,
     required String rowId,
     required Map<String, dynamic> data,
+    List<String>? customPermissions,
   }) async {
     // Sanitize rowId to ensure it is alphanumeric/underscore/dash/dot and <= 36 chars
     final safeRowId = rowId.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
     final truncatedRowId = safeRowId.length > 36 ? safeRowId.substring(0, 36) : safeRowId;
+
+    final userId = _currentUser?.$id;
+    final permissions = customPermissions ??
+        (userId != null
+            ? [
+                Permission.read(Role.user(userId)),
+                Permission.update(Role.user(userId)),
+                Permission.delete(Role.user(userId)),
+              ]
+            : null);
 
     try {
       await tables.createRow(
@@ -95,6 +111,7 @@ class AppwriteService {
         tableId: tableId,
         rowId: truncatedRowId,
         data: data,
+        permissions: permissions,
       );
     } on AppwriteException catch (e) {
       if (e.code == 409) {
@@ -104,6 +121,7 @@ class AppwriteService {
           tableId: tableId,
           rowId: truncatedRowId,
           data: data,
+          permissions: permissions,
         );
       } else {
         rethrow;
@@ -116,9 +134,11 @@ class AppwriteService {
   Future<void> syncProfile(Profile profile) async {
     if (!isAuthenticated) return;
     try {
+      // Scope profile rowId to current user so different users never collide on 'me'
+      final userScopedId = '${_currentUser?.$id ?? 'user'}_${profile.id}';
       await _upsertRow(
         tableId: AppwriteConstants.profilesCollectionId,
-        rowId: profile.id,
+        rowId: userScopedId,
         data: {
           'name': profile.name,
           'avatar_index': profile.avatarColorIndex,
@@ -137,11 +157,17 @@ class AppwriteService {
         tableId: AppwriteConstants.profilesCollectionId,
       );
 
+      final currentUid = _currentUser?.$id;
       return res.rows.map((row) {
+        String localId = row.$id;
+        if (currentUid != null && localId.startsWith('${currentUid}_')) {
+          localId = localId.substring('${currentUid}_'.length);
+        }
+
         return Profile(
-          id: row.$id,
+          id: localId,
           name: row.data['name'] as String? ?? 'User',
-          relation: row.$id,
+          relation: localId,
           avatarColorIndex: row.data['avatar_index'] as int? ?? 0,
           createdAt: DateTime.tryParse(row.$createdAt) ?? DateTime.now(),
           updatedAt: DateTime.tryParse(row.$updatedAt) ?? DateTime.now(),
@@ -346,6 +372,10 @@ class AppwriteService {
           'end_verse': endVerse,
           'explanation_json': explanationJson,
         },
+        customPermissions: [
+          Permission.read(Role.users()),
+          Permission.update(Role.users()),
+        ],
       );
     } catch (e) {
       debugPrint('Appwrite syncCachedExplanation error: $e');
@@ -377,6 +407,7 @@ class AppwriteService {
     required ReadingRepository readingRepo,
     required ProfileRepository profileRepo,
     required BookmarkRepository bookmarkRepo,
+    SettingsService? settingsService,
   }) async {
     if (!isAuthenticated) {
       debugPrint('Appwrite: Skipping sync because user is not authenticated.');
@@ -391,6 +422,21 @@ class AppwriteService {
     syncMessageNotifier.value = 'Syncing with Appwrite Cloud...';
 
     try {
+      // 0. Account Switch Safety Check
+      // If a different user account logs in on this device, wipe local SQLite first
+      // so User B doesn't accidentally upload User A's local sessions to their account.
+      if (settingsService != null) {
+        final lastUid = settingsService.getLastSyncedUserId();
+        final currentUid = _currentUser?.$id;
+        if (lastUid != null && currentUid != null && lastUid != currentUid) {
+          debugPrint('Appwrite: Account switch detected ($lastUid -> $currentUid). Resetting local data.');
+          await AppDatabase.instance.clearUserData();
+        }
+        if (currentUid != null) {
+          await settingsService.setLastSyncedUserId(currentUid);
+        }
+      }
+
       // 1. Sync Profiles
       final localProfiles = await profileRepo.getAllProfiles();
       for (final p in localProfiles) {

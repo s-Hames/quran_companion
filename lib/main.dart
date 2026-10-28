@@ -40,6 +40,7 @@ void main() async {
       readingRepo: ReadingRepository(appwriteService: appwriteService),
       profileRepo: ProfileRepository(appwriteService: appwriteService),
       bookmarkRepo: BookmarkRepository(appwriteService: appwriteService),
+      settingsService: settingsService,
     ));
   } catch (e) {
     debugPrint('Appwrite initial sync notice: $e');
