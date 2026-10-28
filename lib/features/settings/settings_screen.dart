@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/models/profile.dart';
 import '../../providers/app_providers.dart';
+import '../../services/appwrite_service.dart';
 import '../../shared/widgets/responsive_layout.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -251,9 +252,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final readingRepo = ref.read(readingRepositoryProvider);
       await readingRepo.clearAllCachedExplanations();
       ref.read(sessionRefreshProvider.notifier).trigger();
+    ref.read(profilesListProvider.notifier).loadProfiles();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cached explanations cleared.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _performManualSync() async {
+    final appwrite = ref.read(appwriteServiceProvider);
+    final readingRepo = ref.read(readingRepositoryProvider);
+    final profileRepo = ref.read(profileRepositoryProvider);
+    final bookmarkRepo = ref.read(bookmarkRepositoryProvider);
+
+    await appwrite.performFullSync(
+      readingRepo: readingRepo,
+      profileRepo: profileRepo,
+      bookmarkRepo: bookmarkRepo,
+    );
+
+    ref.read(sessionRefreshProvider.notifier).trigger();
+    ref.read(profilesListProvider.notifier).loadProfiles();
+
+    if (mounted) {
+      final msg = appwrite.syncMessageNotifier.value ?? 'Sync completed!';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: appwrite.syncStateNotifier.value == SyncState.error
+              ? AppColors.secondary
+              : AppColors.success,
+        ),
+      );
+    }
+  }
+
+  Future<void> _signInGoogle() async {
+    final appwrite = ref.read(appwriteServiceProvider);
+    try {
+      await appwrite.signInWithGoogle();
+      await _performManualSync();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign-in cancelled or failed: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -489,7 +536,160 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Section 5: Data & Storage Management
+              // Section 5: Cloud Sync & Backup (Appwrite)
+              _sectionHeader('Cloud Sync & Backup'),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final appwriteService = ref.watch(appwriteServiceProvider);
+                      return ValueListenableBuilder(
+                        valueListenable: appwriteService.userNotifier,
+                        builder: (context, user, _) {
+                          final isSignedIn = user != null;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: isSignedIn
+                                          ? (isDark ? AppColors.darkPrimaryContainer : AppColors.primaryContainer)
+                                          : (isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      isSignedIn ? Icons.cloud_done_rounded : Icons.cloud_outlined,
+                                      color: isSignedIn
+                                          ? (isDark ? AppColors.darkPrimary : AppColors.primaryDark)
+                                          : AppColors.textSecondaryOf(context),
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          isSignedIn
+                                              ? (user.name.isNotEmpty ? user.name : 'Account Connected')
+                                              : 'Cloud Backup & Sync',
+                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          isSignedIn
+                                              ? user.email
+                                              : 'Sign in with Google to sync across family devices.',
+                                          style: TextStyle(
+                                            color: AppColors.textSecondaryOf(context),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSignedIn)
+                                    ValueListenableBuilder<SyncState>(
+                                      valueListenable: appwriteService.syncStateNotifier,
+                                      builder: (context, syncState, _) {
+                                        if (syncState == SyncState.syncing) {
+                                          return const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          );
+                                        }
+                                        return IconButton(
+                                          icon: const Icon(Icons.sync_rounded),
+                                          tooltip: 'Sync Now',
+                                          onPressed: _performManualSync,
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                              if (isSignedIn) ...[
+                                const SizedBox(height: 14),
+                                ValueListenableBuilder<String?>(
+                                  valueListenable: appwriteService.syncMessageNotifier,
+                                  builder: (context, syncMsg, _) {
+                                    if (syncMsg == null || syncMsg.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.accentGold),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              syncMsg,
+                                              style: TextStyle(fontSize: 12, color: AppColors.textSecondaryOf(context)),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ] else
+                                const SizedBox(height: 16),
+                              if (!isSignedIn)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.login_rounded, size: 18),
+                                    label: const Text('Sign in with Google'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isDark ? AppColors.darkPrimary : AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: _signInGoogle,
+                                  ),
+                                )
+                              else ...[
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(Icons.cloud_sync_rounded, size: 18),
+                                    label: const Text('Sync with Cloud Now'),
+                                    onPressed: _performManualSync,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(Icons.logout_rounded, size: 16),
+                                    label: const Text('Sign Out'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.error,
+                                    ),
+                                    onPressed: () async {
+                                      await appwriteService.signOut();
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Section 6: Data & Storage Management
               _sectionHeader('Data & Storage'),
               Card(
                 child: Column(

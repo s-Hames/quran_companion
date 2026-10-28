@@ -7,6 +7,7 @@ import '../data/models/reading_session.dart';
 import '../data/repositories/bookmark_repository.dart';
 import '../data/repositories/profile_repository.dart';
 import '../data/repositories/reading_repository.dart';
+import '../services/appwrite_service.dart';
 import '../services/gemini_service.dart';
 import '../services/image_service.dart';
 import '../services/settings_service.dart';
@@ -22,19 +23,26 @@ final settingsServiceProvider = Provider<SettingsService>((ref) {
   throw UnimplementedError('settingsServiceProvider must be overridden in ProviderScope');
 });
 
+final appwriteServiceProvider = Provider<AppwriteService>((ref) {
+  return AppwriteService();
+});
+
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  return ProfileRepository(dbHelper: db);
+  final appwrite = ref.watch(appwriteServiceProvider);
+  return ProfileRepository(dbHelper: db, appwriteService: appwrite);
 });
 
 final readingRepositoryProvider = Provider<ReadingRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  return ReadingRepository(dbHelper: db);
+  final appwrite = ref.watch(appwriteServiceProvider);
+  return ReadingRepository(dbHelper: db, appwriteService: appwrite);
 });
 
 final bookmarkRepositoryProvider = Provider<BookmarkRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  return BookmarkRepository(dbHelper: db);
+  final appwrite = ref.watch(appwriteServiceProvider);
+  return BookmarkRepository(dbHelper: db, appwriteService: appwrite);
 });
 
 final geminiServiceProvider = Provider<GeminiService>((ref) {

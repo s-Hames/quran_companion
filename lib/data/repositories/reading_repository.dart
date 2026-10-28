@@ -4,19 +4,28 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../database/app_database.dart';
 import '../models/quran_explanation.dart';
 import '../models/reading_session.dart';
+import '../../services/appwrite_service.dart';
 
 class ReadingRepository {
   final AppDatabase _dbHelper;
+  final AppwriteService? _appwriteService;
 
-  ReadingRepository({AppDatabase? dbHelper})
-      : _dbHelper = dbHelper ?? AppDatabase.instance;
+  ReadingRepository({AppDatabase? dbHelper, AppwriteService? appwriteService})
+      : _dbHelper = dbHelper ?? AppDatabase.instance,
+        _appwriteService = appwriteService;
 
-  Future<void> saveSession(ReadingSession session) async {
+  Future<void> saveSession(ReadingSession session, {bool syncToCloud = true}) async {
     final db = await _dbHelper.database;
     await db.insert(
       'reading_sessions',
       session.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
     );
+
+    // Sync to Appwrite Cloud in background
+    if (syncToCloud) {
+      _appwriteService?.syncReadingSession(session);
+    }
 
     // If session has explanation, cache it for future instant reloads
     if (session.explanationJson != null && session.explanationJson!.isNotEmpty) {
@@ -37,6 +46,9 @@ class ReadingRepository {
       where: 'id = ?',
       whereArgs: [session.id],
     );
+
+    // Sync to Appwrite Cloud in background
+    _appwriteService?.syncReadingSession(session);
 
     // Sync explanation to cache if present
     if (session.explanationJson != null && session.explanationJson!.isNotEmpty) {
@@ -150,6 +162,9 @@ class ReadingRepository {
       where: 'session_id = ?',
       whereArgs: [sessionId],
     );
+
+    // Sync deletion to cloud in background
+    _appwriteService?.deleteReadingSession(sessionId);
   }
 
   Future<ReadingSession?> getSessionById(String sessionId) async {
@@ -172,6 +187,15 @@ class ReadingRepository {
       whereArgs: [profileId],
       orderBy: 'read_at DESC',
       limit: limit,
+    );
+    return maps.map((m) => ReadingSession.fromMap(m)).toList();
+  }
+
+  Future<List<ReadingSession>> getAllSessions() async {
+    final db = await _dbHelper.database;
+    final maps = await db.query(
+      'reading_sessions',
+      orderBy: 'read_at DESC',
     );
     return maps.map((m) => ReadingSession.fromMap(m)).toList();
   }
@@ -360,6 +384,14 @@ class ReadingRepository {
         'created_at': DateTime.now().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    // Sync to Appwrite Cloud in background
+    _appwriteService?.syncCachedExplanation(
+      surahNumber,
+      startVerse,
+      endVerse,
+      explanationJson,
     );
   }
 

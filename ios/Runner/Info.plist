@@ -70,5 +70,18 @@
     <string>Quran Companion uses the camera to capture pages from your physical Mushaf for passage identification.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Quran Companion requires access to your photo library to select photos of Quran pages.</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLName</key>
+        <string>io.appwrite</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>appwrite-callback-6ae0d54d0006a54bbe8b</string>
+        </array>
+      </dict>
+    </array>
   </dict>
 </plist>

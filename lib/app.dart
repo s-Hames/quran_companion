@@ -6,6 +6,7 @@ import 'features/home/home_screen.dart';
 import 'features/journey/journey_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'providers/app_providers.dart';
+import 'services/appwrite_service.dart';
 
 class QuranCompanionApp extends ConsumerWidget {
   final ThemeData? theme;
@@ -34,15 +35,40 @@ class QuranCompanionApp extends ConsumerWidget {
   }
 }
 
-class MainNavigationShell extends StatefulWidget {
+class MainNavigationShell extends ConsumerStatefulWidget {
   const MainNavigationShell({super.key});
 
   @override
-  State<MainNavigationShell> createState() => _MainNavigationShellState();
+  ConsumerState<MainNavigationShell> createState() => _MainNavigationShellState();
 }
 
-class _MainNavigationShellState extends State<MainNavigationShell> {
+class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appwrite = ref.read(appwriteServiceProvider);
+      appwrite.syncStateNotifier.addListener(_onSyncStateChanged);
+    });
+  }
+
+  void _onSyncStateChanged() {
+    final appwrite = ref.read(appwriteServiceProvider);
+    if (appwrite.syncStateNotifier.value == SyncState.success) {
+      ref.read(sessionRefreshProvider.notifier).trigger();
+      ref.read(profilesListProvider.notifier).loadProfiles();
+    }
+  }
+
+  @override
+  void dispose() {
+    try {
+      ref.read(appwriteServiceProvider).syncStateNotifier.removeListener(_onSyncStateChanged);
+    } catch (_) {}
+    super.dispose();
+  }
 
   void _onTabSelected(int index) {
     setState(() {

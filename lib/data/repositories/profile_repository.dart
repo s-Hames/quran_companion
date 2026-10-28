@@ -1,11 +1,14 @@
 import '../database/app_database.dart';
 import '../models/profile.dart';
+import '../../services/appwrite_service.dart';
 
 class ProfileRepository {
   final AppDatabase _dbHelper;
+  final AppwriteService? _appwriteService;
 
-  ProfileRepository({AppDatabase? dbHelper})
-      : _dbHelper = dbHelper ?? AppDatabase.instance;
+  ProfileRepository({AppDatabase? dbHelper, AppwriteService? appwriteService})
+      : _dbHelper = dbHelper ?? AppDatabase.instance,
+        _appwriteService = appwriteService;
 
   Future<List<Profile>> getAllProfiles() async {
     final db = await _dbHelper.database;
@@ -43,5 +46,26 @@ class ProfileRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    final updated = await getProfileById(id);
+    if (updated != null) {
+      _appwriteService?.syncProfile(updated);
+    }
+  }
+
+  Future<void> saveProfile(Profile profile) async {
+    final db = await _dbHelper.database;
+    final existing = await getProfileById(profile.id);
+    if (existing != null) {
+      await db.update(
+        'profiles',
+        profile.toMap(),
+        where: 'id = ?',
+        whereArgs: [profile.id],
+      );
+    } else {
+      await db.insert('profiles', profile.toMap());
+    }
+    _appwriteService?.syncProfile(profile);
   }
 }
